@@ -27,8 +27,9 @@ namespace Test.Controllers
             _roleManager = roleManager;
         }
         public ActionResult Login()
-        { 
-             return View();
+        {
+           
+            return View();
         }
 
         [HttpPost]
@@ -40,17 +41,20 @@ namespace Test.Controllers
                 var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, false);
                 if(result.Succeeded)
                 {
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToAction("Visible", "Item");
 
                 }
                 ModelState.AddModelError("", "Username or password incorrect");
             }
             return View(model);
+            var usrid = _userManager.GetUserId(HttpContext.User);
         }
         public IActionResult Register()
         {
+            //checksifadminnexixtsornot
             if(!_roleManager.RoleExistsAsync(Helper.Admin).GetAwaiter().GetResult())
             {
+                //createnewidentityroleifthydontexist
                 _roleManager.CreateAsync(new IdentityRole(Helper.Admin));
                 _roleManager.CreateAsync(new IdentityRole(Helper.User));
             }
@@ -64,15 +68,27 @@ namespace Test.Controllers
             {
                 var usr = new IdentityUser
                 {
+                    //two required properties
                     UserName = model.Email,
                     Email = model.Email,
+                    //FirstName = model.FirstName,
+                    //LastName = model.LastName,
                 };
+                var isEmailIdExists = _db.Users.Any(x => x.UserName == usr.Email);
+                if(isEmailIdExists)
+                {
+                    ModelState.AddModelError("Email", "User with this Mail Already Exists");
+                    return View(model);
+                }
+                //helper methods in user manager
                 var result = await _userManager.CreateAsync(usr,model.Password);
                 if(result.Succeeded)
                 {
+                    
                     await _userManager.AddToRoleAsync(usr, model.RoleName);
+                    //automacatiallysigninthenewuser
                     await _signInManager.SignInAsync(usr, false);
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToAction("Login", "Account");
                 }
                 foreach (var error in result.Errors)
                 {
@@ -82,6 +98,17 @@ namespace Test.Controllers
 
             return View(model);
         }
+        [HttpPost]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction("Index", "Home");
+        }
+        public IActionResult AccessDenied()
+        {
+            return View();
+        }
+        
 
     }
 }
